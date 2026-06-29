@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Club Legacy - Stock Control System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #1e40af; --primary-light: #3b82f6; --primary-dark: #1e3a8a;
+            --success: #059669; --warning: #d97706; --danger: #dc2626;
+            --bg: #f0f4f8; --card: #ffffff; --text: #1e293b; --text-light: #64748b;
+            --border: #e2e8f0; --sidebar-bg: #1e293b; --sidebar-text: #cbd5e1;
+            --shadow: 0 1px 3px rgba(0,0,0,0.08); --shadow-lg: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; }
+
+        /* Sidebar */
+        .sidebar { width: 260px; background: var(--sidebar-bg); color: var(--sidebar-text); min-height: 100vh; position: fixed; left: 0; top: 0; z-index: 100; display: flex; flex-direction: column; transition: transform 0.3s; }
+        .sidebar-header { padding: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar-header h1 { font-size: 1.1rem; color: white; margin-bottom: 0.25rem; }
+        .sidebar-header .subtitle { font-size: 0.75rem; color: var(--sidebar-text); }
+        .sidebar-nav { flex: 1; padding: 0.75rem 0; overflow-y: auto; }
+        .nav-section { padding: 0.5rem 1.25rem; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; margin-top: 0.75rem; }
+        .nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 1.25rem; cursor: pointer; transition: all 0.2s; font-size: 0.85rem; border-left: 3px solid transparent; }
+        .nav-item:hover { background: rgba(255,255,255,0.05); }
+        .nav-item.active { background: rgba(59,130,246,0.15); color: white; border-left-color: var(--primary-light); }
+        .nav-item .badge { margin-left: auto; background: var(--danger); color: white; font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: 9999px; }
+        .sidebar-footer { padding: 1rem 1.25rem; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.8rem; }
+        .user-info { display: flex; align-items: center; gap: 0.5rem; }
+        .user-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary-light); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 0.8rem; }
+
+        /* Main */
+        .main-content { margin-left: 260px; flex: 1; min-height: 100vh; }
+        .top-bar { background: var(--card); padding: 0.75rem 1.5rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 50; }
+        .top-bar .page-title { font-size: 1.1rem; font-weight: 600; }
+        .top-bar-actions { display: flex; gap: 0.5rem; align-items: center; }
+        .content { padding: 1.5rem; max-width: 1400px; }
+
+        /* Page visibility */
+        .page { display: none; }
+        .page.active { display: block; }
+
+        /* Cards */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .stat-card { background: var(--card); border-radius: 0.75rem; padding: 1.25rem; box-shadow: var(--shadow); border: 1px solid var(--border); }
+        .stat-card .label { font-size: 0.7rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
+        .stat-card .value { font-size: 1.5rem; font-weight: 700; }
+        .stat-card .sub { font-size: 0.75rem; color: var(--text-light); margin-top: 0.2rem; }
+        .stat-card.success .value { color: var(--success); }
+        .stat-card.warning .value { color: var(--warning); }
+        .stat-card.danger .value { color: var(--danger); }
+        .stat-card.primary .value { color: var(--primary); }
+
+        /* Buttons */
+        .btn { padding: 0.45rem 0.9rem; border: none; border-radius: 0.375rem; font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.3rem; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+        .btn-outline:hover { background: var(--bg); }
+        .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.75rem; }
+
+        /* Tables */
+        .table-card { background: var(--card); border-radius: 0.75rem; box-shadow: var(--shadow); border: 1px solid var(--border); overflow: hidden; margin-bottom: 1.5rem; }
+        .table-header { padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 0.75rem; }
+        .table-header h3 { font-size: 1rem; font-weight: 600; }
+        .filters { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+        .filters input, .filters select { padding: 0.4rem 0.7rem; border: 1px solid var(--border); border-radius: 0.375rem; font-size: 0.8rem; outline: none; }
+        .filters input:focus, .filters select:focus { border-color: var(--primary-light); }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.65rem 1rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.8rem; }
+        th { background: var(--bg); font-weight: 600; color: var(--text-light); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; }
+        tr:hover { background: #f8fafc; }
+        .badge { padding: 0.15rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-yellow { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fee2e2; color: #991b1b; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gray { background: #f1f5f9; color: #475569; }
+
+        /* Modal */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: var(--card); border-radius: 0.75rem; padding: 1.5rem; width: 90%; max-width: 550px; max-height: 85vh; overflow-y: auto; box-shadow: var(--shadow-lg); }
+        .modal h2 { margin-bottom: 1rem; font-size: 1.1rem; }
+        .form-group { margin-bottom: 0.85rem; }
+        .form-group label { display: block; margin-bottom: 0.25rem; font-size: 0.8rem; font-weight: 500; color: var(--text-light); }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.45rem 0.7rem; border: 1px solid var(--border); border-radius: 0.375rem; font-size: 0.85rem; outline: none; }
+        .form-group input:focus, .form-group select:focus { border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.25rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+
+        /* Charts */
+        .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .chart-card { background: var(--card); border-radius: 0.75rem; padding: 1.25rem; box-shadow: var(--shadow); border: 1px solid var(--border); }
+        .chart-card h3 { margin-bottom: 0.75rem; font-size: 0.9rem; }
+        .bar-chart { display: flex; flex-direction: column; gap: 0.4rem; }
+        .bar-row { display: flex; align-items: center; gap: 0.5rem; }
+        .bar-label { width: 100px; font-size: 0.7rem; color: var(--text-light); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .bar-track { flex: 1; height: 22px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+        .bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 0.4rem; transition: width 0.5s; }
+        .bar-fill span { font-size: 0.65rem; color: white; font-weight: 600; }
+
+        /* Velocity indicators */
+        .velocity-fast { color: var(--success); font-weight: 600; }
+        .velocity-medium { color: var(--primary); font-weight: 500; }
+        .velocity-slow { color: var(--warning); font-weight: 600; }
+        .velocity-dead { color: var(--danger); font-weight: 600; }
+
+        /* Toast */
+        .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 2000; display: flex; flex-direction: column; gap: 0.5rem; }
+        .toast { background: var(--text); color: white; padding: 0.65rem 1rem; border-radius: 0.5rem; font-size: 0.8rem; box-shadow: var(--shadow-lg); animation: slideIn 0.3s ease; }
+        .toast.success { background: var(--success); }
+        .toast.error { background: var(--danger); }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* Login screen */
+        .login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; width: 100%; background: linear-gradient(135deg, #1e3a8a, #1e40af, #3b82f6); }
+        .login-box { background: white; border-radius: 1rem; padding: 2.5rem; width: 90%; max-width: 400px; box-shadow: var(--shadow-lg); }
+        .login-box h2 { text-align: center; margin-bottom: 0.5rem; color: var(--primary-dark); }
+        .login-box .login-subtitle { text-align: center; color: var(--text-light); font-size: 0.85rem; margin-bottom: 1.5rem; }
+        .login-box .form-group { margin-bottom: 1rem; }
+        .login-box .btn { width: 100%; justify-content: center; padding: 0.6rem; font-size: 0.9rem; }
+
+        /* Admin panel */
+        .user-list { display: flex; flex-direction: column; gap: 0.5rem; }
+        .user-card { background: var(--bg); border-radius: 0.5rem; padding: 0.75rem 1rem; display: flex; align-items: center; justify-content: space-between; }
+        .user-card .user-name { font-weight: 600; font-size: 0.85rem; }
+        .user-card .user-role { font-size: 0.75rem; color: var(--text-light); }
+        .permission-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.5rem; margin-top: 0.5rem; }
+        .perm-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; }
+        .perm-item input[type="checkbox"] { accent-color: var(--primary); }
+
+        /* Tabs */
+        .tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 1rem; }
+        .tab-btn { padding: 0.5rem 1rem; border: none; background: none; font-size: 0.85rem; cursor: pointer; color: var(--text-light); border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .main-content { margin-left: 0; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .chart-grid { grid-template-columns: 1fr; }
+            .form-row { grid-template-columns: 1fr; }
+        }
+
+        .overflow-x { overflow-x: auto; }
+        .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--text-light); }
+        .empty-state .icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+        .profit-positive { color: var(--success); font-weight: 600; }
+        .profit-negative { color: var(--danger); font-weight: 600; }
+
+        .summary-row { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+        .summary-row:last-child { border-bottom: none; font-weight: 600; }
+        .summary-row .label { color: var(--text-light); }
+    </style>
+</head>
+<body>
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Login Screen -->
+    <div class="login-screen" id="loginScreen">
+        <div class="login-box">
+            <h2>Club Legacy</h2>
+            <p class="login-subtitle">Stock Control System</p>
+            <form onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="loginUsername" required placeholder="Enter username">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" required placeholder="Enter password">
+                </div>
+                <button type="submit" class="btn btn-primary" style="margin-top:0.5rem;">Sign In</button>
+            </form>
+            <p style="text-align:center;margin-top:1rem;font-size:0.75rem;color:var(--text-light);">Default: admin / admin123</p>
+        </div>
+    </div>
+
+    <!-- App -->
+    <div id="appContainer" style="display:none;width:100%;display:none;">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1>Club Legacy</h1>
+                <div class="subtitle">Stock Control System</div>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-section">Main</div>
+                <div class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">&#128202; Dashboard</div>
+                <div class="nav-item" data-page="inventory" onclick="navigateTo('inventory')">&#128230; Inventory</div>
+                <div class="nav-item" data-page="sales" onclick="navigateTo('sales')">&#128176; Sales & Margins</div>
+                <div class="nav-item" data-page="transactions" onclick="navigateTo('transactions')">&#128196; Transactions</div>
+
+                <div class="nav-section">Analytics</div>
+                <div class="nav-item" data-page="velocity" onclick="navigateTo('velocity')">&#128640; Stock Velocity</div>
+                <div class="nav-item" data-page="valuation" onclick="navigateTo('valuation')">&#128178; Stock Valuation</div>
+                <div class="nav-item" data-page="alerts" onclick="navigateTo('alerts')">&#9888;&#65039; Alerts <span class="badge" id="alertBadge">0</span></div>
+
+                <div class="nav-section">Reports</div>
+                <div class="nav-item" data-page="reports" onclick="navigateTo('reports')">&#128203; Reports</div>
+
+                <div class="nav-section" id="adminSection">Administration</div>
+                <div class="nav-item" data-page="admin" onclick="navigateTo('admin')" id="adminNav">&#9881;&#65039; Admin Panel</div>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatarSidebar">A</div>
+                    <div>
+                        <div style="font-size:0.8rem;color:white;" id="userNameSidebar">Admin</div>
+                        <div style="font-size:0.7rem;" id="userRoleSidebar">Administrator</div>
+                    </div>
+                </div>
+                <button class="btn btn-outline" style="width:100%;margin-top:0.75rem;color:var(--sidebar-text);border-color:rgba(255,255,255,0.2);" onclick="logout()">Logout</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="top-bar">
+                <div class="page-title" id="pageTitle">Dashboard</div>
+                <div class="top-bar-actions">
+                    <button class="btn btn-outline" onclick="exportData()">&#128229; Export</button>
+                    <button class="btn btn-primary" onclick="openAddProductModal()">+ Add Product</button>
+                </div>
+            </div>
+            <div class="content">
+                <!-- DASHBOARD -->
+                <div class="page active" id="page-dashboard">
+                    <div class="stats-grid" id="dashStats"></div>
+                    <div class="chart-grid">
+                        <div class="chart-card"><h3>Top Selling Products (by units sold)</h3><div class="bar-chart" id="chartTopSelling"></div></div>
+                        <div class="chart-card"><h3>Stock Value by Category</h3><div class="bar-chart" id="chartCatValue"></div></div>
+                    </div>
+                    <div class="chart-grid">
+                        <div class="chart-card"><h3>Recent Sales</h3><div id="recentSalesDash"></div></div>
+                        <div class="chart-card"><h3>Daily Sales Summary</h3><div id="dailySummary"></div></div>
+                    </div>
+                </div>
+
+                <!-- INVENTORY -->
+                <div class="page" id="page-inventory">
+                    <div class="table-card">
+                        <div class="table-header">
+                            <h3>Inventory Management</h3>
+                            <div class="filters">
+                                <input type="text" id="invSearch" placeholder="Search..." oninput="renderInventory()">
+                                <select id="invCatFilter" onchange="renderInventory()"><option value="">All Categories</option></select>
+                                <select id="invStockFilter" onchange="renderInventory()">
+                                    <option value="">All Levels</option><option value="ok">In Stock</option><option value="low">Low Stock</option><option value="out">Out of Stock</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="overflow-x"><table><thead><tr>
+                            <th>Barcode</th><th>Item</th><th>Category</th><th>Opening</th><th>Added</th><th>Total</th><th>Closing</th><th>Sold</th><th>Selling Price</th><th>Cost Price</th><th>Status</th><th>Actions</th>
+                        </tr></thead><tbody id="invTableBody"></tbody></table></div>
+                    </div>
+                </div>
+
+                <!-- SALES & MARGINS -->
+                <div class="page" id="page-sales">
+                    <div class="stats-grid" id="salesStats"></div>
+                    <div class="table-card">
+                        <div class="table-header"><h3>Product Margins & Profitability</h3>
+                            <div class="filters">
+                                <input type="text" id="salesSearch" placeholder="Search..." oninput="renderSales()">
+                                <select id="salesCatFilter" onchange="renderSales()"><option value="">All Categories</option></select>
+                            </div>
+                        </div>
+                        <div class="overflow-x"><table><thead><tr>
+                            <th>Item</th><th>Category</th><th>Units Sold</th><th>Selling Price</th><th>Cost Price</th><th>Margin</th><th>Margin %</th><th>Total Revenue</th><th>Total Profit</th>
+                        </tr></thead><tbody id="salesTableBody"></tbody></table></div>
+                    </div>
+                </div>
+
+                <!-- TRANSACTIONS -->
+                <div class="page" id="page-transactions">
+                    <div class="table-card">
+                        <div class="table-header"><h3>Transaction History</h3>
+                            <div class="filters">
+                                <input type="text" id="txSearch" placeholder="Search..." oninput="renderTransactions()">
+                                <select id="txTypeFilter" onchange="renderTransactions()"><option value="">All Types</option><option value="sale">Sale</option><option value="restock">Restock</option><option value="adjust">Adjustment</option></select>
+                            </div>
+                        </div>
+                        <div class="overflow-x"><table><thead><tr>
+                            <th>Date/Time</th><th>Product</th><th>Type</th><th>Qty</th><th>Unit Price</th><th>Total</th><th>By</th><th>Notes</th>
+                        </tr></thead><tbody id="txTableBody"></tbody></table></div>
+                    </div>
+                </div>
+
+                <!-- STOCK VELOCITY -->
+                <div class="page" id="page-velocity">
+                    <div class="stats-grid" id="velocityStats"></div>
+                    <div class="tabs">
+                        <button class="tab-btn active" onclick="switchVelocityTab('fast')">Fast Selling</button>
+                        <button class="tab-btn" onclick="switchVelocityTab('slow')">Slow Selling</button>
+                        <button class="tab-btn" onclick="switchVelocityTab('dead')">Dead Stock</button>
+                    </div>
+                    <div class="table-card">
+                        <div class="overflow-x"><table><thead><tr>
+                            <th>Item</th><th>Category</th><th>Units Sold (30d)</th><th>Avg Daily Sales</th><th>Current Stock</th><th>Days of Stock Left</th><th>Velocity</th>
+                        </tr></thead><tbody id="velocityTableBody"></tbody></table></div>
+                    </div>
+                </div>
+
+                <!-- STOCK VALUATION -->
+                <div class="page" id="page-valuation">
+                    <div class="stats-grid" id="valuationStats"></div>
+                    <div class="table-card">
+                        <div class="table-header"><h3>Stock Valuation by Category</h3></div>
+                        <div class="overflow-x"><table><thead><tr>
+                            <th>Category</th><th>Total Items</th><th>Total Units</th><th>Cost Value (KES)</th><th>Retail Value (KES)</th><th>Potential Profit (KES)</th><th>% of Total Value</th>
+                        </tr></thead><tbody id="valuationTableBody"></tbody></table></div>
+                    </div>
+                    <div class="table-card" style="margin-top:1rem;">
+                        <div class="table-header"><h3>Individual Product Valuation</h3>
+                            <div class="filters"><input type="text" id="valSearch" placeholder="Search..." oninput="renderValuation()"></div>
+                        </div>
+                        <div class="overflow-x"><table><thead><tr>
+                            <th>Item</th><th>Category</th><th>Qty</th><th>Cost/Unit</th><th>Sell/Unit</th><th>Stock Cost Value</th><th>Stock Retail Value</th><th>Unrealised Profit</th>
+                        </tr></thead><tbody id="valProductsBody"></tbody></table></div>
+                    </div>
+                </div>
+
+                <!-- ALERTS -->
+                <div class="page" id="page-alerts">
+                    <div id="alertsContent"></div>
+                </div>
+
+                <!-- REPORTS -->
+                <div class="page" id="page-reports">
+                    <div class="chart-grid">
+                        <div class="chart-card">
+                            <h3>Generate Report</h3>
+                            <div class="form-group"><label>Report Type</label>
+                                <select id="reportType">
+                                    <option value="daily">Daily Stock Take</option>
+                                    <option value="sales_summary">Sales Summary</option>
+                                    <option value="profit">Profit & Loss</option>
+                                    <option value="velocity">Stock Velocity</option>
+                                    <option value="valuation">Full Valuation</option>
+                                    <option value="dead_stock">Dead Stock Report</option>
+                                </select>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group"><label>From</label><input type="date" id="reportFrom"></div>
+                                <div class="form-group"><label>To</label><input type="date" id="reportTo"></div>
+                            </div>
+                            <button class="btn btn-primary" onclick="generateReport()">Generate Report</button>
+                            <button class="btn btn-outline" onclick="downloadReport()" style="margin-left:0.5rem;">Download CSV</button>
+                        </div>
+                        <div class="chart-card">
+                            <h3>Report Preview</h3>
+                            <div id="reportPreview" style="max-height:400px;overflow-y:auto;font-size:0.8rem;"><p style="color:var(--text-light);">Select a report type and click Generate</p></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ADMIN PANEL -->
+                <div class="page" id="page-admin">
+                    <div class="tabs">
+                        <button class="tab-btn active" onclick="switchAdminTab('users')">User Management</button>
+                        <button class="tab-btn" onclick="switchAdminTab('permissions')">Permissions & Reports</button>
+                        <button class="tab-btn" onclick="switchAdminTab('settings')">System Settings</button>
+                    </div>
+                    <div id="adminUsers" class="admin-tab">
+                        <div class="table-card">
+                            <div class="table-header"><h3>Users</h3><button class="btn btn-primary" onclick="openAddUserModal()">+ Add User</button></div>
+                            <div class="overflow-x"><table><thead><tr><th>Username</th><th>Full Name</th><th>Role</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead><tbody id="usersTableBody"></tbody></table></div>
+                        </div>
+                    </div>
+                    <div id="adminPermissions" class="admin-tab" style="display:none;">
+                        <div class="table-card">
+                            <div class="table-header"><h3>Role Permissions</h3></div>
+                            <div style="padding:1.25rem;" id="permissionsContent"></div>
+                        </div>
+                    </div>
+                    <div id="adminSettings" class="admin-tab" style="display:none;">
+                        <div class="table-card">
+                            <div class="table-header"><h3>System Settings</h3></div>
+                            <div style="padding:1.25rem;">
+                                <div class="form-group"><label>Business Name</label><input type="text" id="settingBizName" value="Club Legacy" onchange="saveSettings()"></div>
+                                <div class="form-row">
+                                    <div class="form-group"><label>Low Stock Threshold (%)</label><input type="number" id="settingLowStock" value="20" onchange="saveSettings()"></div>
+                                    <div class="form-group"><label>Dead Stock Days</label><input type="number" id="settingDeadDays" value="30" onchange="saveSettings()"></div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group"><label>Fast Selling Threshold (units/day)</label><input type="number" id="settingFastThreshold" value="5" step="0.5" onchange="saveSettings()"></div>
+                                    <div class="form-group"><label>Slow Selling Threshold (units/day)</label><input type="number" id="settingSlowThreshold" value="1" step="0.1" onchange="saveSettings()"></div>
+                                </div>
+                                <button class="btn btn-success" onclick="saveSettings();showToast('Settings saved','success')">Save Settings</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Product Modal -->
+    <div class="modal-overlay" id="productModal">
+        <div class="modal">
+            <h2 id="prodModalTitle">Add Product</h2>
+            <form id="productForm" onsubmit="saveProduct(event)">
+                <input type="hidden" id="prodId">
+                <div class="form-row">
+                    <div class="form-group"><label>Barcode *</label><input type="text" id="prodBarcode" required placeholder="e.g., S25022"></div>
+                    <div class="form-group"><label>Category *</label>
+                        <select id="prodCategory" required>
+                            <option value="">Select...</option><option value="Spirits">Spirits</option><option value="Beer">Beer</option><option value="Wine">Wine</option><option value="Soft Drinks">Soft Drinks</option><option value="Water">Water</option><option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group"><label>Item Name *</label><input type="text" id="prodName" required placeholder="e.g., SMIRNOFF VODKA 750ML"></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Opening Stock</label><input type="number" id="prodOpening" min="0" value="0"></div>
+                    <div class="form-group"><label>Added Stock</label><input type="number" id="prodAdded" min="0" value="0"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Selling Price (KES) *</label><input type="number" id="prodSellPrice" required min="0" step="1" placeholder="0"></div>
+                    <div class="form-group"><label>Cost/Buying Price (KES) *</label><input type="number" id="prodCostPrice" required min="0" step="1" placeholder="0"></div>
+                </div>
+                <div class="form-group"><label>Min Stock Level</label><input type="number" id="prodMinStock" min="0" value="5"></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('productModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Record Sale Modal -->
+    <div class="modal-overlay" id="saleModal">
+        <div class="modal">
+            <h2>Record Sale</h2>
+            <form onsubmit="recordSale(event)">
+                <input type="hidden" id="saleProductId">
+                <div class="form-group"><label>Product</label><input type="text" id="saleProductName" disabled></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Available Stock</label><input type="text" id="saleAvailable" disabled></div>
+                    <div class="form-group"><label>Selling Price</label><input type="text" id="salePriceDisplay" disabled></div>
+                </div>
+                <div class="form-group"><label>Quantity Sold *</label><input type="number" id="saleQty" required min="1" placeholder="1"></div>
+                <div class="form-group"><label>Notes</label><input type="text" id="saleNotes" placeholder="Optional"></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('saleModal')">Cancel</button>
+                    <button type="submit" class="btn btn-success">Record Sale</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Restock Modal -->
+    <div class="modal-overlay" id="restockModal">
+        <div class="modal">
+            <h2>Restock Product</h2>
+            <form onsubmit="recordRestock(event)">
+                <input type="hidden" id="restockProductId">
+                <div class="form-group"><label>Product</label><input type="text" id="restockProductName" disabled></div>
+                <div class="form-group"><label>Current Stock</label><input type="text" id="restockCurrent" disabled></div>
+                <div class="form-group"><label>Quantity to Add *</label><input type="number" id="restockQty" required min="1" placeholder="0"></div>
+                <div class="form-group"><label>Notes</label><input type="text" id="restockNotes" placeholder="Optional"></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('restockModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Stock</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add User Modal -->
+    <div class="modal-overlay" id="userModal">
+        <div class="modal">
+            <h2 id="userModalTitle">Add User</h2>
+            <form onsubmit="saveUser(event)">
+                <input type="hidden" id="editUserId">
+                <div class="form-row">
+                    <div class="form-group"><label>Username *</label><input type="text" id="newUsername" required></div>
+                    <div class="form-group"><label>Full Name *</label><input type="text" id="newFullname" required></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Password *</label><input type="password" id="newPassword" required></div>
+                    <div class="form-group"><label>Role *</label>
+                        <select id="newRole" required><option value="staff">Staff</option><option value="manager">Manager</option><option value="admin">Admin</option></select>
+                    </div>
+                </div>
+                <div class="form-group"><label>Report Access</label>
+                    <div class="permission-grid" id="userReportPerms"></div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('userModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    // ====== DATA LAYER ======
+    const STORAGE_KEYS = { products: 'cl_products', transactions: 'cl_transactions', users: 'cl_users', settings: 'cl_settings', session: 'cl_session' };
+    function getData(k) { try { return JSON.parse(localStorage.getItem(k)) || []; } catch { return []; } }
+    function setData(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
+    function getObj(k) { try { return JSON.parse(localStorage.getItem(k)) || {}; } catch { return {}; } }
+    function setObj(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
+    function genId() { return Date.now().toString(36) + Math.random().toString(36).substr(2,6); }
+    function fmt(n) { return 'KES ' + Number(n||0).toLocaleString('en-KE', {minimumFractionDigits:0, maximumFractionDigits:0}); }
+    function fmtDec(n) { return 'KES ' + Number(n||0).toLocaleString('en-KE', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+
+    // ====== SETTINGS ======
+    function getSettings() {
+        const defaults = { bizName:'Club Legacy', lowStockPct:20, deadDays:30, fastThreshold:5, slowThreshold:1 };
+        const stored = getObj(STORAGE_KEYS.settings);
+        return (stored && stored.bizName) ? stored : defaults;
+    }
+    function saveSettings() {
+        const s = { bizName: document.getElementById('settingBizName')?.value || 'Club Legacy',
+            lowStockPct: parseInt(document.getElementById('settingLowStock')?.value) || 20,
+            deadDays: parseInt(document.getElementById('settingDeadDays')?.value) || 30,
+            fastThreshold: parseFloat(document.getElementById('settingFastThreshold')?.value) || 5,
+            slowThreshold: parseFloat(document.getElementById('settingSlowThreshold')?.value) || 1 };
+        setObj(STORAGE_KEYS.settings, s);
+    }
+
+    // ====== AUTH ======
+    function getUsers() { return getData(STORAGE_KEYS.users); }
+    function setUsers(u) { setData(STORAGE_KEYS.users, u); }
+    function currentUser() { return getObj(STORAGE_KEYS.session); }
+
+    function initDefaultUsers() {
+        if (getUsers().length === 0) {
+            setUsers([
+                { id: genId(), username:'admin', password:'admin123', fullName:'System Admin', role:'admin', status:'active', lastLogin:null,
+                  permissions:{ dashboard:true, inventory:true, sales:true, transactions:true, velocity:true, valuation:true, alerts:true, reports:true, admin:true } },
+                { id: genId(), username:'manager', password:'manager1', fullName:'Floor Manager', role:'manager', status:'active', lastLogin:null,
+                  permissions:{ dashboard:true, inventory:true, sales:true, transactions:true, velocity:true, valuation:true, alerts:true, reports:true, admin:false } },
+                { id: genId(), username:'staff', password:'staff123', fullName:'Bar Staff', role:'staff', status:'active', lastLogin:null,
+                  permissions:{ dashboard:true, inventory:true, sales:true, transactions:true, velocity:false, valuation:false, alerts:true, reports:false, admin:false } }
+            ]);
+        }
+    }
+
+    function handleLogin(e) {
+        e.preventDefault();
+        const uname = document.getElementById('loginUsername').value.trim();
+        const pass = document.getElementById('loginPassword').value;
+        const users = getUsers();
+        const user = users.find(u => u.username === uname && u.password === pass && u.status === 'active');
+        if (!user) { showToast('Invalid credentials or account disabled','error'); return; }
+        user.lastLogin = new Date().toISOString();
+        setUsers(users);
+        setObj(STORAGE_KEYS.session, { id:user.id, username:user.username, fullName:user.fullName, role:user.role, permissions:user.permissions });
+        showApp();
+    }
+
+    function logout() { localStorage.removeItem(STORAGE_KEYS.session); location.reload(); }
+
+    function showApp() {
+        const user = currentUser();
+        if (!user || !user.id) { document.getElementById('loginScreen').style.display='flex'; document.getElementById('appContainer').style.display='none'; return; }
+        document.getElementById('loginScreen').style.display='none';
+        document.getElementById('appContainer').style.display='flex';
+        document.getElementById('userAvatarSidebar').textContent = user.fullName[0].toUpperCase();
+        document.getElementById('userNameSidebar').textContent = user.fullName;
+        document.getElementById('userRoleSidebar').textContent = user.role.charAt(0).toUpperCase()+user.role.slice(1);
+
+        // Hide admin nav if no permission
+        if (!user.permissions.admin) { document.getElementById('adminNav').style.display='none'; document.getElementById('adminSection').style.display='none'; }
+        // Hide nav items based on permissions
+        document.querySelectorAll('.nav-item[data-page]').forEach(el => {
+            const pg = el.dataset.page;
+            if (pg && user.permissions[pg] === false) el.style.display='none';
+        });
+        refreshAll();
+    }
+
+    // ====== NAVIGATION ======
+    function navigateTo(page) {
+        const user = currentUser();
+        if (user.permissions[page] === false) { showToast('Access denied','error'); return; }
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById('page-'+page)?.classList.add('active');
+        const titles = { dashboard:'Dashboard', inventory:'Inventory', sales:'Sales & Margins', transactions:'Transactions', velocity:'Stock Velocity', valuation:'Stock Valuation', alerts:'Alerts', reports:'Reports', admin:'Admin Panel' };
+        document.getElementById('pageTitle').textContent = titles[page] || page;
+    }
+
+    // ====== PRODUCTS (INVENTORY) ======
+    function getProducts() { return getData(STORAGE_KEYS.products); }
+    function setProducts(p) { setData(STORAGE_KEYS.products, p); }
+    function getTransactions() { return getData(STORAGE_KEYS.transactions); }
+    function setTransactions(t) { setData(STORAGE_KEYS.transactions, t); }
+
+    function categorize(barcode) {
+        if (!barcode) return 'Other';
+        const b = barcode.toString().toUpperCase();
+        if (b.startsWith('S')) return 'Spirits';
+        if (b.startsWith('B')) return 'Beer';
+        if (b.startsWith('W')) return 'Wine';
+        if (b.startsWith('N')) return 'Soft Drinks';
+        return 'Other';
+    }
+
+    function seedProducts() {
+        if (getProducts().length > 0) return;
+        const items = [
+            {bc:'B50005',name:'BALOZI 500ML-BOTT',sell:250,cost:180},{bc:'B50013',name:'BALOZI 500ML-CAN',sell:300,cost:220},
+            {bc:'S25022',name:'BEST GIN 250ML',sell:420,cost:300},{bc:'S75023',name:'BEST GIN 750ML',sell:1220,cost:850},
+            {bc:'S25016',name:'BEST VODKA 250ML',sell:400,cost:280},{bc:'S75017',name:'BEST VODKA 750ML',sell:1200,cost:820},
+            {bc:'S25033',name:'BEST WHISKY 250ML',sell:520,cost:370},{bc:'S75034',name:'BEST WHISKY 750ML',sell:1350,cost:950},
+            {bc:'S35035',name:'BLACK & WHITE 350ML',sell:750,cost:540},{bc:'S75036',name:'BLACK & WHITE 750ML',sell:1500,cost:1080},
+            {bc:'S25041',name:'BOND 007 250ML',sell:600,cost:420},{bc:'S35042',name:'BOND 7 350ML',sell:750,cost:530},
+            {bc:'S75043',name:'BOND 7 750ML',sell:1600,cost:1150},{bc:'S25044',name:'CAPTAIN MORGAN 250ML',sell:450,cost:320},
+            {bc:'S75045',name:'CAPTAIN MORGAN 750ML',sell:1500,cost:1050},{bc:'S1L71',name:'CASABUENA 1L',sell:850,cost:600},
+            {bc:'S25024',name:'CHROME GIN 250ML',sell:350,cost:240},{bc:'S75025',name:'CHROME GIN 750ML',sell:1000,cost:700},
+            {bc:'S75018',name:'CHROME VODKA 750ML',sell:1000,cost:700},{bc:'S25048',name:'CHROME VODKA 250ML',sell:350,cost:240},
+            {bc:'N35051',name:'COCA-COLA 350ML',sell:100,cost:60},{bc:'S25028',name:'COUNTY BRANDY 250ML',sell:350,cost:240},
+            {bc:'S75029',name:'COUNTY BRANDY 750ML',sell:1100,cost:780},{bc:'N25058',name:'ENERGY DRINK 250ML',sell:70,cost:40},
+            {bc:'B50008',name:'FAXE 500ML',sell:350,cost:260},{bc:'W75048',name:'FOUR COUSINS 750ML',sell:1400,cost:1000},
+            {bc:'S25019',name:'GILBEYS GIN 250ML',sell:600,cost:420},{bc:'S35020',name:'GILBEYS GIN 350ML',sell:800,cost:570},
+            {bc:'S75021',name:'GILBEYS GIN 750ML',sell:1600,cost:1150},{bc:'B25007',name:'GUINESS SMOOTH 250ML',sell:230,cost:160},
+            {bc:'B50003',name:'GUINNESS 500ML-BOTT',sell:270,cost:190},{bc:'B50011',name:'GUINNESS 500ML-CAN',sell:300,cost:220},
+            {bc:'S75088',name:'HUNTERS CHOICE 750ML',sell:1500,cost:1050},{bc:'S25048B',name:'HUNTERS 250ML',sell:500,cost:350},
+            {bc:'S75068',name:'KC 750ML',sell:1550,cost:1100},{bc:'S25086',name:'KC PINEAPPLE 250ML',sell:400,cost:280},
+            {bc:'S25087',name:'KC LEMON AND GINGER 250ML',sell:400,cost:280},{bc:'S25069',name:'KC SMOOTH 250ML',sell:400,cost:280},
+            {bc:'S25070',name:'KIBAO 250ML',sell:350,cost:240},{bc:'N50054',name:'LEMONADE 300ML',sell:70,cost:35},
+            {bc:'N50053',name:'DELMONTE MANGO JUICE 1L',sell:350,cost:250},{bc:'W75085',name:'4TH STREET 750ML',sell:1400,cost:1000},
+            {bc:'N25059',name:'PLAY DRINK 250ML',sell:70,cost:35},{bc:'N25057',name:'PREDATOR 250ML',sell:70,cost:35},
+            {bc:'S75038',name:'RED LABEL 750ML',sell:2100,cost:1550},{bc:'N25056',name:'REDBULL 250ML',sell:250,cost:170},
+            {bc:'S25030',name:'RICHOT 250ML',sell:570,cost:400},{bc:'S35031',name:'RICHOT 350ML',sell:800,cost:570},
+            {bc:'S75032',name:'RICHOT 750ML',sell:1550,cost:1100},{bc:'N25062',name:'SMIRNOFF PINEAPPLE 250ML-CAN',sell:300,cost:200},
+            {bc:'S25013',name:'SMIRNOFF VODKA 250ML',sell:570,cost:400},{bc:'S35014',name:'SMIRNOFF VODKA 350ML',sell:800,cost:570},
+            {bc:'S75015',name:'SMIRNOFF VODKA 750ML',sell:1600,cost:1150},{bc:'N25061',name:'SNAP 250ML-CAN',sell:300,cost:200},
+            {bc:'N50055',name:'SODA KUBWA 500ML',sell:100,cost:50},{bc:'N35052',name:'SODA NDOGO 350ML',sell:70,cost:30},
+            {bc:'B50002',name:'TUSKER CIDER 500ML',sell:270,cost:190},{bc:'B50001',name:'TUSKER LAGER 500ML',sell:250,cost:175},
+            {bc:'B50014',name:'TUSKER LAGER 500ML-CAN',sell:250,cost:175},{bc:'B50010',name:'TUSKER LITE 330ML',sell:250,cost:180},
+            {bc:'S25010',name:'VICEROY 250ML',sell:600,cost:420},{bc:'S37511',name:'VICEROY 375ML',sell:850,cost:600},
+            {bc:'S75084',name:'VAT 69 375ML',sell:1200,cost:850},{bc:'S75012',name:'VICEROY 750ML',sell:1550,cost:1100},
+            {bc:'B50004',name:'WHITE CAP 500ML-BOTT',sell:250,cost:175},{bc:'B50012',name:'WHITE CAP 500ML-CAN',sell:300,cost:220},
+            {bc:'N25060',name:'SMIRNOFF ICE GUARANA 250ML-CAN',sell:250,cost:170},{bc:'WT1L63',name:'HIGHLANDS 1L',sell:100,cost:60},
+            {bc:'WT1L64',name:'DASANI 1L',sell:100,cost:60},{bc:'WT1L65',name:'KERINGET 1L',sell:100,cost:60},
+            {bc:'WT50067',name:'MINERAL WATER 500ML',sell:80,cost:40},{bc:'WT1L66',name:'WABA DRINKING WATER 1L',sell:80,cost:40},
+        ];
+
+        const products = items.map(it => {
+            const opening = Math.floor(Math.random() * 24) + 2;
+            const sold = Math.floor(Math.random() * opening * 0.7);
+            return {
+                id: genId(), barcode: it.bc, name: it.name, category: categorize(it.bc),
+                openingStock: opening, addedStock: 0, closingStock: opening - sold,
+                totalSold: sold, sellPrice: it.sell, costPrice: it.cost, minStock: 5,
+                createdAt: new Date().toISOString()
+            };
+        });
+        setProducts(products);
+
+        // Seed some transactions
+        const txs = [];
+        products.forEach(p => {
+            if (p.totalSold > 0) {
+                for (let i = 0; i < Math.min(p.totalSold, 3); i++) {
+                    const qty = i < 2 ? Math.floor(p.totalSold/3) : p.totalSold - 2*Math.floor(p.totalSold/3);
+                    if (qty > 0) txs.push({
+                        id: genId(), productId: p.id, productName: p.name, type:'sale', qty,
+                        unitPrice: p.sellPrice, total: qty*p.sellPrice, by: 'admin',
+                        notes:'', date: new Date(Date.now() - Math.random()*7*86400000).toISOString()
+                    });
+                }
+            }
+        });
+        setTransactions(txs.sort((a,b) => new Date(b.date)-new Date(a.date)));
+    }
+
+    // ====== RENDER DASHBOARD ======
+    function renderDashboard() {
+        const products = getProducts();
+        const txs = getTransactions();
+        const settings = getSettings();
+
+        const totalProducts = products.length;
+        const totalUnits = products.reduce((s,p) => s + p.closingStock, 0);
+        const totalCostValue = products.reduce((s,p) => s + p.closingStock * p.costPrice, 0);
+        const totalRetailValue = products.reduce((s,p) => s + p.closingStock * p.sellPrice, 0);
+        const totalSold = products.reduce((s,p) => s + p.totalSold, 0);
+        const totalRevenue = txs.filter(t=>t.type==='sale').reduce((s,t) => s + t.total, 0);
+        const totalCOGS = txs.filter(t=>t.type==='sale').reduce((s,t) => { const prod = products.find(p=>p.id===t.productId); return s + (prod ? t.qty*prod.costPrice : 0); }, 0);
+        const totalProfit = totalRevenue - totalCOGS;
+        const lowStock = products.filter(p => p.closingStock > 0 && p.closingStock <= p.minStock).length;
+        const outOfStock = products.filter(p => p.closingStock === 0).length;
+
+        document.getElementById('dashStats').innerHTML = `
+            <div class="stat-card"><div class="label">Total Products</div><div class="value">${totalProducts}</div><div class="sub">${totalUnits} total units</div></div>
+            <div class="stat-card success"><div class="label">Stock Value (Cost)</div><div class="value">${fmt(totalCostValue)}</div><div class="sub">Retail: ${fmt(totalRetailValue)}</div></div>
+            <div class="stat-card primary"><div class="label">Total Revenue</div><div class="value">${fmt(totalRevenue)}</div><div class="sub">${totalSold} units sold</div></div>
+            <div class="stat-card success"><div class="label">Gross Profit</div><div class="value">${fmt(totalProfit)}</div><div class="sub">Margin: ${totalRevenue?((totalProfit/totalRevenue)*100).toFixed(1):0}%</div></div>
+            <div class="stat-card warning"><div class="label">Low Stock</div><div class="value">${lowStock}</div><div class="sub">Below min threshold</div></div>
+            <div class="stat-card danger"><div class="label">Out of Stock</div><div class="value">${outOfStock}</div><div class="sub">Needs restocking</div></div>
+        `;
+
+        // Top selling
+        const topSelling = [...products].sort((a,b)=>b.totalSold-a.totalSold).slice(0,8);
+        const maxSold = topSelling[0]?.totalSold || 1;
+        document.getElementById('chartTopSelling').innerHTML = topSelling.map(p => `
+            <div class="bar-row"><div class="bar-label" title="${p.name}">${p.name}</div><div class="bar-track"><div class="bar-fill" style="width:${(p.totalSold/maxSold)*100}%;background:var(--primary)"><span>${p.totalSold}</span></div></div></div>
+        `).join('') || '<p style="color:var(--text-light);text-align:center;padding:1rem;">No data</p>';
+
+        // Category value
+        const cats = {};
+        products.forEach(p => { cats[p.category] = (cats[p.category]||0) + p.closingStock*p.sellPrice; });
+        const catEntries = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+        const maxCat = catEntries[0]?.[1] || 1;
+        document.getElementById('chartCatValue').innerHTML = catEntries.map(([c,v]) => `
+            <div class="bar-row"><div class="bar-label">${c}</div><div class="bar-track"><div class="bar-fill" style="width:${(v/maxCat)*100}%;background:var(--success)"><span>${fmt(v)}</span></div></div></div>
+        `).join('') || '<p style="color:var(--text-light);text-align:center;padding:1rem;">No data</p>';
+
+        // Recent sales
+        const recentSales = txs.filter(t=>t.type==='sale').slice(0,6);
+        document.getElementById('recentSalesDash').innerHTML = recentSales.length ? `<table><thead><tr><th>Date</th><th>Product</th><th>Qty</th><th>Total</th></tr></thead><tbody>${recentSales.map(t=>`<tr><td>${new Date(t.date).toLocaleDateString()}</td><td>${t.productName}</td><td>${t.qty}</td><td>${fmt(t.total)}</td></tr>`).join('')}</tbody></table>` : '<p style="color:var(--text-light);text-align:center;padding:1rem;">No sales yet</p>';
+
+        // Daily summary
+        const today = new Date().toDateString();
+        const todaySales = txs.filter(t=>t.type==='sale' && new Date(t.date).toDateString()===today);
+        const todayRevenue = todaySales.reduce((s,t)=>s+t.total,0);
+        const todayCost = todaySales.reduce((s,t)=>{ const p=products.find(x=>x.id===t.productId); return s+(p?t.qty*p.costPrice:0); },0);
+        document.getElementById('dailySummary').innerHTML = `
+            <div class="summary-row"><span class="label">Today's Sales</span><span>${todaySales.length} transactions</span></div>
+            <div class="summary-row"><span class="label">Revenue</span><span>${fmt(todayRevenue)}</span></div>
+            <div class="summary-row"><span class="label">Cost of Goods</span><span>${fmt(todayCost)}</span></div>
+            <div class="summary-row"><span class="label">Gross Profit</span><span class="profit-positive">${fmt(todayRevenue-todayCost)}</span></div>
+        `;
+
+        // Alert badge
+        const alertCount = lowStock + outOfStock;
+        document.getElementById('alertBadge').textContent = alertCount;
+        document.getElementById('alertBadge').style.display = alertCount ? 'inline' : 'none';
+    }
+
+    // ====== RENDER INVENTORY ======
+    function renderInventory() {
+        const products = getProducts();
+        const search = (document.getElementById('invSearch')?.value||'').toLowerCase();
+        const catF = document.getElementById('invCatFilter')?.value||'';
+        const stockF = document.getElementById('invStockFilter')?.value||'';
+
+        let filtered = products.filter(p => {
+            const ms = p.name.toLowerCase().includes(search) || p.barcode.toLowerCase().includes(search);
+            const mc = !catF || p.category === catF;
+            let mst = true;
+            if (stockF==='ok') mst = p.closingStock > p.minStock;
+            else if (stockF==='low') mst = p.closingStock > 0 && p.closingStock <= p.minStock;
+            else if (stockF==='out') mst = p.closingStock === 0;
+            return ms && mc && mst;
+        });
+
+        document.getElementById('invTableBody').innerHTML = filtered.map(p => {
+            let status, cls;
+            if (p.closingStock===0){status='Out of Stock';cls='badge-red';}
+            else if (p.closingStock<=p.minStock){status='Low Stock';cls='badge-yellow';}
+            else {status='In Stock';cls='badge-green';}
+            return `<tr>
+                <td><strong>${p.barcode}</strong></td><td>${p.name}</td><td><span class="badge badge-blue">${p.category}</span></td>
+                <td>${p.openingStock}</td><td>${p.addedStock}</td><td>${p.openingStock+p.addedStock}</td><td><strong>${p.closingStock}</strong></td><td>${p.totalSold}</td>
+                <td>${fmt(p.sellPrice)}</td><td>${fmt(p.costPrice)}</td>
+                <td><span class="badge ${cls}">${status}</span></td>
+                <td><button class="btn btn-sm btn-success" onclick="openSaleModal('${p.id}')" title="Sell">Sale</button>
+                <button class="btn btn-sm btn-primary" onclick="openRestockModal('${p.id}')" title="Restock">+</button>
+                <button class="btn btn-sm btn-outline" onclick="editProduct('${p.id}')">&#9998;</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteProduct('${p.id}')">&#128465;</button></td>
+            </tr>`;
+        }).join('');
+
+        // Update cat filter
+        const cats = [...new Set(products.map(p=>p.category))].sort();
+        const sel = document.getElementById('invCatFilter');
+        if (sel) { const cur=sel.value; sel.innerHTML='<option value="">All Categories</option>'+cats.map(c=>`<option value="${c}" ${c===cur?'selected':''}>${c}</option>`).join(''); }
+        const sel2 = document.getElementById('salesCatFilter');
+        if (sel2) { const cur=sel2.value; sel2.innerHTML='<option value="">All Categories</option>'+cats.map(c=>`<option value="${c}" ${c===cur?'selected':''}>${c}</option>`).join(''); }
+    }
+
+    // ====== RENDER SALES & MARGINS ======
+    function renderSales() {
+        const products = getProducts();
+        const txs = getTransactions().filter(t=>t.type==='sale');
+        const search = (document.getElementById('salesSearch')?.value||'').toLowerCase();
+        const catF = document.getElementById('salesCatFilter')?.value||'';
+
+        let filtered = products.filter(p => {
+            const ms = p.name.toLowerCase().includes(search);
+            const mc = !catF || p.category === catF;
+            return ms && mc && p.totalSold > 0;
+        }).sort((a,b)=>b.totalSold-a.totalSold);
+
+        const totalRevenue = filtered.reduce((s,p)=>s+p.totalSold*p.sellPrice,0);
+        const totalCost = filtered.reduce((s,p)=>s+p.totalSold*p.costPrice,0);
+        const totalProfit = totalRevenue - totalCost;
+        const avgMargin = totalRevenue ? (totalProfit/totalRevenue*100) : 0;
+
+        document.getElementById('salesStats').innerHTML = `
+            <div class="stat-card primary"><div class="label">Total Revenue</div><div class="value">${fmt(totalRevenue)}</div></div>
+            <div class="stat-card warning"><div class="label">Total Cost</div><div class="value">${fmt(totalCost)}</div></div>
+            <div class="stat-card success"><div class="label">Gross Profit</div><div class="value">${fmt(totalProfit)}</div></div>
+            <div class="stat-card"><div class="label">Avg Margin</div><div class="value">${avgMargin.toFixed(1)}%</div></div>
+        `;
+
+        document.getElementById('salesTableBody').innerHTML = filtered.map(p => {
+            const margin = p.sellPrice - p.costPrice;
+            const marginPct = p.sellPrice ? (margin/p.sellPrice*100) : 0;
+            const revenue = p.totalSold * p.sellPrice;
+            const profit = p.totalSold * margin;
+            return `<tr>
+                <td>${p.name}</td><td><span class="badge badge-blue">${p.category}</span></td><td><strong>${p.totalSold}</strong></td>
+                <td>${fmt(p.sellPrice)}</td><td>${fmt(p.costPrice)}</td><td>${fmt(margin)}</td>
+                <td><span class="${marginPct>=30?'profit-positive':'profit-negative'}">${marginPct.toFixed(1)}%</span></td>
+                <td>${fmt(revenue)}</td><td class="profit-positive">${fmt(profit)}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    // ====== RENDER TRANSACTIONS ======
+    function renderTransactions() {
+        const txs = getTransactions();
+        const search = (document.getElementById('txSearch')?.value||'').toLowerCase();
+        const typeF = document.getElementById('txTypeFilter')?.value||'';
+
+        let filtered = txs.filter(t => {
+            const ms = t.productName.toLowerCase().includes(search) || (t.notes||'').toLowerCase().includes(search);
+            const mt = !typeF || t.type === typeF;
+            return ms && mt;
+        });
+
+        document.getElementById('txTableBody').innerHTML = filtered.slice(0,100).map(t => {
+            const typeLabel = t.type==='sale'?'&#9660; Sale':t.type==='restock'?'&#9650; Restock':'&#8644; Adjust';
+            const typeCls = t.type==='sale'?'badge-red':t.type==='restock'?'badge-green':'badge-yellow';
+            return `<tr>
+                <td>${new Date(t.date).toLocaleString()}</td><td>${t.productName}</td>
+                <td><span class="badge ${typeCls}">${typeLabel}</span></td>
+                <td><strong>${t.type==='sale'?'-':'+'} ${t.qty}</strong></td>
+                <td>${fmt(t.unitPrice||0)}</td><td>${fmt(t.total||0)}</td>
+                <td>${t.by||'-'}</td><td>${t.notes||'-'}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    // ====== STOCK VELOCITY ======
+    let velocityTab = 'fast';
+    function switchVelocityTab(tab) {
+        velocityTab = tab;
+        document.querySelectorAll('#page-velocity .tab-btn').forEach(b=>b.classList.remove('active'));
+        event.target.classList.add('active');
+        renderVelocity();
+    }
+
+    function renderVelocity() {
+        const products = getProducts();
+        const settings = getSettings();
+        const days = 30;
+
+        // Calculate velocity for each product
+        const velocityData = products.map(p => {
+            const avgDaily = p.totalSold / days;
+            const daysLeft = avgDaily > 0 ? Math.round(p.closingStock / avgDaily) : 9999;
+            let velocity;
+            if (avgDaily >= settings.fastThreshold) velocity = 'fast';
+            else if (avgDaily >= settings.slowThreshold) velocity = 'medium';
+            else if (p.totalSold > 0) velocity = 'slow';
+            else velocity = 'dead';
+            return { ...p, avgDaily, daysLeft, velocity };
+        });
+
+        const fast = velocityData.filter(v=>v.velocity==='fast').length;
+        const medium = velocityData.filter(v=>v.velocity==='medium').length;
+        const slow = velocityData.filter(v=>v.velocity==='slow').length;
+        const dead = velocityData.filter(v=>v.velocity==='dead').length;
+
+        document.getElementById('velocityStats').innerHTML = `
+            <div class="stat-card success"><div class="label">Fast Selling</div><div class="value">${fast}</div><div class="sub">${settings.fastThreshold}+ units/day</div></div>
+            <div class="stat-card primary"><div class="label">Medium Selling</div><div class="value">${medium}</div><div class="sub">${settings.slowThreshold}-${settings.fastThreshold} units/day</div></div>
+            <div class="stat-card warning"><div class="label">Slow Selling</div><div class="value">${slow}</div><div class="sub">&lt;${settings.slowThreshold} units/day</div></div>
+            <div class="stat-card danger"><div class="label">Dead Stock</div><div class="value">${dead}</div><div class="sub">No sales in ${days} days</div></div>
+        `;
+
+        let filtered;
+        if (velocityTab==='fast') filtered = velocityData.filter(v=>v.velocity==='fast'||v.velocity==='medium');
+        else if (velocityTab==='slow') filtered = velocityData.filter(v=>v.velocity==='slow');
+        else filtered = velocityData.filter(v=>v.velocity==='dead');
+
+        filtered.sort((a,b)=>b.avgDaily-a.avgDaily);
+
+        document.getElementById('velocityTableBody').innerHTML = filtered.map(v => {
+            const velLabel = v.velocity==='fast'?'Fast':v.velocity==='medium'?'Medium':v.velocity==='slow'?'Slow':'Dead';
+            const velCls = 'velocity-'+v.velocity;
+            return `<tr>
+                <td>${v.name}</td><td><span class="badge badge-blue">${v.category}</span></td>
+                <td><strong>${v.totalSold}</strong></td><td>${v.avgDaily.toFixed(1)}</td>
+                <td>${v.closingStock}</td><td>${v.daysLeft>999?'N/A':v.daysLeft+' days'}</td>
+                <td><span class="${velCls}">${velLabel}</span></td>
+            </tr>`;
+        }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-light);padding:2rem;">No items in this category</td></tr>';
+    }
+
+    // ====== STOCK VALUATION ======
+    function renderValuation() {
+        const products = getProducts();
+        const search = (document.getElementById('valSearch')?.value||'').toLowerCase();
+
+        const totalCostVal = products.reduce((s,p)=>s+p.closingStock*p.costPrice,0);
+        const totalRetailVal = products.reduce((s,p)=>s+p.closingStock*p.sellPrice,0);
+        const totalPotentialProfit = totalRetailVal - totalCostVal;
+        const totalUnits = products.reduce((s,p)=>s+p.closingStock,0);
+
+        document.getElementById('valuationStats').innerHTML = `
+            <div class="stat-card"><div class="label">Total Stock Units</div><div class="value">${totalUnits.toLocaleString()}</div></div>
+            <div class="stat-card warning"><div class="label">Total Cost Value</div><div class="value">${fmt(totalCostVal)}</div></div>
+            <div class="stat-card primary"><div class="label">Total Retail Value</div><div class="value">${fmt(totalRetailVal)}</div></div>
+            <div class="stat-card success"><div class="label">Potential Profit</div><div class="value">${fmt(totalPotentialProfit)}</div><div class="sub">If all stock sold</div></div>
+        `;
+
+        // By category
+        const cats = {};
+        products.forEach(p => {
+            if (!cats[p.category]) cats[p.category] = { items:0, units:0, costVal:0, retailVal:0 };
+            cats[p.category].items++;
+            cats[p.category].units += p.closingStock;
+            cats[p.category].costVal += p.closingStock * p.costPrice;
+            cats[p.category].retailVal += p.closingStock * p.sellPrice;
+        });
+
+        document.getElementById('valuationTableBody').innerHTML = Object.entries(cats).sort((a,b)=>b[1].retailVal-a[1].retailVal).map(([cat,d]) => {
+            const profit = d.retailVal - d.costVal;
+            const pct = totalRetailVal ? (d.retailVal/totalRetailVal*100).toFixed(1) : 0;
+            return `<tr><td><strong>${cat}</strong></td><td>${d.items}</td><td>${d.units}</td><td>${fmt(d.costVal)}</td><td>${fmt(d.retailVal)}</td><td class="profit-positive">${fmt(profit)}</td><td>${pct}%</td></tr>`;
+        }).join('');
+
+        // Individual products
+        let filtered = products.filter(p => !search || p.name.toLowerCase().includes(search));
+        filtered.sort((a,b)=>(b.closingStock*b.sellPrice)-(a.closingStock*a.sellPrice));
+
+        document.getElementById('valProductsBody').innerHTML = filtered.map(p => {
+            const costVal = p.closingStock*p.costPrice;
+            const retVal = p.closingStock*p.sellPrice;
+            const profit = retVal-costVal;
+            return `<tr><td>${p.name}</td><td><span class="badge badge-blue">${p.category}</span></td><td>${p.closingStock}</td><td>${fmt(p.costPrice)}</td><td>${fmt(p.sellPrice)}</td><td>${fmt(costVal)}</td><td>${fmt(retVal)}</td><td class="profit-positive">${fmt(profit)}</td></tr>`;
+        }).join('');
+    }
+
+    // ====== ALERTS ======
+    function renderAlerts() {
+        const products = getProducts();
+        const outOfStock = products.filter(p=>p.closingStock===0);
+        const lowStock = products.filter(p=>p.closingStock>0 && p.closingStock<=p.minStock);
+        const dead = products.filter(p=>p.totalSold===0);
+
+        let html = '';
+        if (outOfStock.length) {
+            html += `<h3 style="margin-bottom:0.75rem;color:var(--danger);">&#128680; Out of Stock (${outOfStock.length})</h3>`;
+            html += outOfStock.map(p=>`<div style="background:var(--card);border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:0.5rem;border-left:4px solid var(--danger);display:flex;justify-content:space-between;align-items:center;box-shadow:var(--shadow);">
+                <div><strong>${p.name}</strong><br><span style="font-size:0.75rem;color:var(--text-light);">${p.barcode} - ${p.category}</span></div>
+                <button class="btn btn-sm btn-primary" onclick="openRestockModal('${p.id}')">Restock</button></div>`).join('');
+        }
+        if (lowStock.length) {
+            html += `<h3 style="margin:1.5rem 0 0.75rem;color:var(--warning);">&#9888;&#65039; Low Stock (${lowStock.length})</h3>`;
+            html += lowStock.map(p=>`<div style="background:var(--card);border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:0.5rem;border-left:4px solid var(--warning);display:flex;justify-content:space-between;align-items:center;box-shadow:var(--shadow);">
+                <div><strong>${p.name}</strong><br><span style="font-size:0.75rem;color:var(--text-light);">Stock: ${p.closingStock} (Min: ${p.minStock}) - ${p.category}</span></div>
+                <button class="btn btn-sm btn-primary" onclick="openRestockModal('${p.id}')">Restock</button></div>`).join('');
+        }
+        if (dead.length) {
+            html += `<h3 style="margin:1.5rem 0 0.75rem;color:var(--text-light);">&#128164; Dead Stock - No Sales (${dead.length})</h3>`;
+            html += dead.map(p=>`<div style="background:var(--card);border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:0.5rem;border-left:4px solid #94a3b8;display:flex;justify-content:space-between;align-items:center;box-shadow:var(--shadow);">
+                <div><strong>${p.name}</strong><br><span style="font-size:0.75rem;color:var(--text-light);">${p.barcode} - Stock: ${p.closingStock} - Value: ${fmt(p.closingStock*p.costPrice)}</span></div></div>`).join('');
+        }
+        if (!html) html = '<div class="empty-state"><div class="icon">&#9989;</div><p>All stock levels healthy!</p></div>';
+        document.getElementById('alertsContent').innerHTML = html;
+    }
+
+    // ====== ADMIN ======
+    function switchAdminTab(tab) {
+        document.querySelectorAll('#page-admin .tab-btn').forEach(b=>b.classList.remove('active'));
+        event.target.classList.add('active');
+        document.querySelectorAll('.admin-tab').forEach(t=>t.style.display='none');
+        document.getElementById('admin'+tab.charAt(0).toUpperCase()+tab.slice(1)).style.display='block';
+        if(tab==='users') renderUsers();
+        if(tab==='permissions') renderPermissions();
+    }
+
+    function renderUsers() {
+        const users = getUsers();
+        document.getElementById('usersTableBody').innerHTML = users.map(u => `<tr>
+            <td><strong>${u.username}</strong></td><td>${u.fullName}</td>
+            <td><span class="badge ${u.role==='admin'?'badge-red':u.role==='manager'?'badge-yellow':'badge-gray'}">${u.role}</span></td>
+            <td><span class="badge ${u.status==='active'?'badge-green':'badge-red'}">${u.status}</span></td>
+            <td>${u.lastLogin?new Date(u.lastLogin).toLocaleString():'-'}</td>
+            <td><button class="btn btn-sm btn-outline" onclick="editUser('${u.id}')">Edit</button>
+            ${u.username!=='admin'?`<button class="btn btn-sm btn-danger" onclick="toggleUserStatus('${u.id}')">${u.status==='active'?'Disable':'Enable'}</button>`:''}</td>
+        </tr>`).join('');
+    }
+
+    function renderPermissions() {
+        const users = getUsers();
+        const pages = ['dashboard','inventory','sales','transactions','velocity','valuation','alerts','reports','admin'];
+        const pageLabels = { dashboard:'Dashboard', inventory:'Inventory', sales:'Sales & Margins', transactions:'Transactions', velocity:'Stock Velocity', valuation:'Stock Valuation', alerts:'Alerts', reports:'Reports', admin:'Admin Panel' };
+
+        let html = '<p style="font-size:0.85rem;color:var(--text-light);margin-bottom:1rem;">Control which pages and reports each role can access:</p>';
+        const roles = ['manager','staff'];
+        roles.forEach(role => {
+            const roleUsers = users.filter(u=>u.role===role);
+            html += `<h4 style="margin:1rem 0 0.5rem;text-transform:capitalize;">${role}s</h4>`;
+            html += '<div class="permission-grid">';
+            pages.forEach(pg => {
+                const checked = roleUsers.length && roleUsers[0].permissions[pg] ? 'checked' : '';
+                html += `<div class="perm-item"><input type="checkbox" ${checked} onchange="updateRolePermission('${role}','${pg}',this.checked)"><label>${pageLabels[pg]}</label></div>`;
+            });
+            html += '</div>';
+        });
+        document.getElementById('permissionsContent').innerHTML = html;
+    }
+
+    function updateRolePermission(role, page, allowed) {
+        const users = getUsers();
+        users.filter(u=>u.role===role).forEach(u=>{ u.permissions[page]=allowed; });
+        setUsers(users);
+        showToast('Permission updated','success');
+    }
+
+    function openAddUserModal() {
+        document.getElementById('userModalTitle').textContent='Add User';
+        document.getElementById('editUserId').value='';
+        document.getElementById('newUsername').value='';
+        document.getElementById('newFullname').value='';
+        document.getElementById('newPassword').value='';
+        document.getElementById('newPassword').required=true;
+        document.getElementById('newRole').value='staff';
+        renderUserReportPerms({});
+        openModal('userModal');
+    }
+
+    function editUser(id) {
+        const user = getUsers().find(u=>u.id===id);
+        if(!user)return;
+        document.getElementById('userModalTitle').textContent='Edit User';
+        document.getElementById('editUserId').value=id;
+        document.getElementById('newUsername').value=user.username;
+        document.getElementById('newFullname').value=user.fullName;
+        document.getElementById('newPassword').value='';
+        document.getElementById('newPassword').required=false;
+        document.getElementById('newRole').value=user.role;
+        renderUserReportPerms(user.permissions);
+        openModal('userModal');
+    }
+
+    function renderUserReportPerms(perms) {
+        const pages = ['dashboard','inventory','sales','transactions','velocity','valuation','alerts','reports'];
+        const labels = { dashboard:'Dashboard', inventory:'Inventory', sales:'Sales & Margins', transactions:'Transactions', velocity:'Stock Velocity', valuation:'Stock Valuation', alerts:'Alerts', reports:'Reports' };
+        document.getElementById('userReportPerms').innerHTML = pages.map(pg =>
+            `<div class="perm-item"><input type="checkbox" id="perm_${pg}" ${perms[pg]!==false?'checked':''}><label>${labels[pg]}</label></div>`
+        ).join('');
+    }
+
+    function saveUser(e) {
+        e.preventDefault();
+        const users = getUsers();
+        const editId = document.getElementById('editUserId').value;
+        const username = document.getElementById('newUsername').value.trim();
+        const fullName = document.getElementById('newFullname').value.trim();
+        const password = document.getElementById('newPassword').value;
+        const role = document.getElementById('newRole').value;
+        const pages = ['dashboard','inventory','sales','transactions','velocity','valuation','alerts','reports'];
+        const permissions = { admin: role==='admin' };
+        pages.forEach(pg=>{ permissions[pg] = document.getElementById('perm_'+pg)?.checked ?? true; });
+
+        if (editId) {
+            const idx = users.findIndex(u=>u.id===editId);
+            if(idx===-1)return;
+            users[idx].username=username;
+            users[idx].fullName=fullName;
+            if(password) users[idx].password=password;
+            users[idx].role=role;
+            users[idx].permissions=permissions;
+        } else {
+            if(users.find(u=>u.username===username)){showToast('Username already exists','error');return;}
+            if(!password){showToast('Password required','error');return;}
+            users.push({ id:genId(), username, password, fullName, role, status:'active', lastLogin:null, permissions });
+        }
+        setUsers(users);
+        closeModal('userModal');
+        renderUsers();
+        showToast('User saved','success');
+    }
+
+    function toggleUserStatus(id) {
+        const users = getUsers();
+        const u = users.find(x=>x.id===id);
+        if(u){ u.status = u.status==='active'?'disabled':'active'; setUsers(users); renderUsers(); showToast('User status updated','success'); }
+    }
+
+    // ====== REPORTS ======
+    let lastReport = [];
+    function generateReport() {
+        const type = document.getElementById('reportType').value;
+        const products = getProducts();
+        const txs = getTransactions();
+        let html = '', data = [];
+
+        if (type==='daily') {
+            html = '<table><thead><tr><th>No</th><th>Barcode</th><th>Item</th><th>Opening</th><th>Added</th><th>Total</th><th>Closing</th><th>Sales</th><th>Price</th><th>Amount</th></tr></thead><tbody>';
+            products.forEach((p,i)=>{
+                const amount = p.totalSold*p.sellPrice;
+                html += `<tr><td>${i+1}</td><td>${p.barcode}</td><td>${p.name}</td><td>${p.openingStock}</td><td>${p.addedStock}</td><td>${p.openingStock+p.addedStock}</td><td>${p.closingStock}</td><td>${p.totalSold}</td><td>${fmt(p.sellPrice)}</td><td>${fmt(amount)}</td></tr>`;
+                data.push([i+1,p.barcode,p.name,p.openingStock,p.addedStock,p.openingStock+p.addedStock,p.closingStock,p.totalSold,p.sellPrice,amount]);
+            });
+            html += '</tbody></table>';
+        } else if (type==='sales_summary') {
+            const totalRev = products.reduce((s,p)=>s+p.totalSold*p.sellPrice,0);
+            const totalCost = products.reduce((s,p)=>s+p.totalSold*p.costPrice,0);
+            html = `<div class="summary-row"><span>Total Units Sold</span><span>${products.reduce((s,p)=>s+p.totalSold,0)}</span></div>
+                <div class="summary-row"><span>Total Revenue</span><span>${fmt(totalRev)}</span></div>
+                <div class="summary-row"><span>Total COGS</span><span>${fmt(totalCost)}</span></div>
+                <div class="summary-row"><span>Gross Profit</span><span class="profit-positive">${fmt(totalRev-totalCost)}</span></div>
+                <div class="summary-row"><span>Profit Margin</span><span>${totalRev?((totalRev-totalCost)/totalRev*100).toFixed(1):0}%</span></div>`;
+            data = [['Metric','Value'],['Total Revenue',totalRev],['Total COGS',totalCost],['Gross Profit',totalRev-totalCost]];
+        } else if (type==='profit') {
+            html = '<table><thead><tr><th>Item</th><th>Sold</th><th>Revenue</th><th>Cost</th><th>Profit</th><th>Margin%</th></tr></thead><tbody>';
+            products.filter(p=>p.totalSold>0).sort((a,b)=>(b.totalSold*(b.sellPrice-b.costPrice))-(a.totalSold*(a.sellPrice-a.costPrice))).forEach(p=>{
+                const rev=p.totalSold*p.sellPrice, cost=p.totalSold*p.costPrice, prof=rev-cost;
+                html += `<tr><td>${p.name}</td><td>${p.totalSold}</td><td>${fmt(rev)}</td><td>${fmt(cost)}</td><td class="profit-positive">${fmt(prof)}</td><td>${(prof/rev*100).toFixed(1)}%</td></tr>`;
+                data.push([p.name,p.totalSold,rev,cost,prof]);
+            });
+            html += '</tbody></table>';
+        } else if (type==='velocity') {
+            const settings=getSettings();
+            html = '<table><thead><tr><th>Item</th><th>Sold(30d)</th><th>Avg/Day</th><th>Status</th></tr></thead><tbody>';
+            products.forEach(p=>{
+                const avg=p.totalSold/30;
+                const vel = avg>=settings.fastThreshold?'Fast':avg>=settings.slowThreshold?'Medium':p.totalSold>0?'Slow':'Dead';
+                html += `<tr><td>${p.name}</td><td>${p.totalSold}</td><td>${avg.toFixed(1)}</td><td class="velocity-${vel.toLowerCase()}">${vel}</td></tr>`;
+                data.push([p.name,p.totalSold,avg.toFixed(1),vel]);
+            });
+            html += '</tbody></table>';
+        } else if (type==='valuation') {
+            const totalVal = products.reduce((s,p)=>s+p.closingStock*p.sellPrice,0);
+            html = '<table><thead><tr><th>Item</th><th>Qty</th><th>Cost Val</th><th>Retail Val</th></tr></thead><tbody>';
+            products.sort((a,b)=>(b.closingStock*b.sellPrice)-(a.closingStock*a.sellPrice)).forEach(p=>{
+                html += `<tr><td>${p.name}</td><td>${p.closingStock}</td><td>${fmt(p.closingStock*p.costPrice)}</td><td>${fmt(p.closingStock*p.sellPrice)}</td></tr>`;
+                data.push([p.name,p.closingStock,p.closingStock*p.costPrice,p.closingStock*p.sellPrice]);
+            });
+            html += `</tbody></table><p style="margin-top:0.5rem;font-weight:600;">Total Retail Value: ${fmt(totalVal)}</p>`;
+        } else if (type==='dead_stock') {
+            const dead = products.filter(p=>p.totalSold===0);
+            html = `<p style="margin-bottom:0.5rem;"><strong>${dead.length}</strong> items with zero sales</p><table><thead><tr><th>Item</th><th>Stock</th><th>Value Tied Up</th></tr></thead><tbody>`;
+            dead.forEach(p=>{
+                html += `<tr><td>${p.name}</td><td>${p.closingStock}</td><td>${fmt(p.closingStock*p.costPrice)}</td></tr>`;
+                data.push([p.name,p.closingStock,p.closingStock*p.costPrice]);
+            });
+            const tiedUp = dead.reduce((s,p)=>s+p.closingStock*p.costPrice,0);
+            html += `</tbody></table><p style="margin-top:0.5rem;font-weight:600;">Total Capital Tied Up: ${fmt(tiedUp)}</p>`;
+        }
+        lastReport = data;
+        document.getElementById('reportPreview').innerHTML = html;
+    }
+
+    function downloadReport() {
+        if (!lastReport.length) { showToast('Generate a report first','error'); return; }
+        let csv = lastReport.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+        const blob = new Blob([csv],{type:'text/csv'});
+        const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='report.csv'; a.click();
+        showToast('Report downloaded','success');
+    }
+
+    // ====== PRODUCT CRUD ======
+    function openAddProductModal() {
+        document.getElementById('prodModalTitle').textContent='Add Product';
+        document.getElementById('productForm').reset();
+        document.getElementById('prodId').value='';
+        openModal('productModal');
+    }
+
+    function editProduct(id) {
+        const p = getProducts().find(x=>x.id===id);
+        if(!p)return;
+        document.getElementById('prodModalTitle').textContent='Edit Product';
+        document.getElementById('prodId').value=p.id;
+        document.getElementById('prodBarcode').value=p.barcode;
+        document.getElementById('prodName').value=p.name;
+        document.getElementById('prodCategory').value=p.category;
+        document.getElementById('prodOpening').value=p.openingStock;
+        document.getElementById('prodAdded').value=p.addedStock;
+        document.getElementById('prodSellPrice').value=p.sellPrice;
+        document.getElementById('prodCostPrice').value=p.costPrice;
+        document.getElementById('prodMinStock').value=p.minStock;
+        openModal('productModal');
+    }
+
+    function saveProduct(e) {
+        e.preventDefault();
+        const products = getProducts();
+        const id = document.getElementById('prodId').value;
+        const data = {
+            barcode: document.getElementById('prodBarcode').value.trim(),
+            name: document.getElementById('prodName').value.trim(),
+            category: document.getElementById('prodCategory').value,
+            openingStock: parseInt(document.getElementById('prodOpening').value)||0,
+            addedStock: parseInt(document.getElementById('prodAdded').value)||0,
+            sellPrice: parseInt(document.getElementById('prodSellPrice').value)||0,
+            costPrice: parseInt(document.getElementById('prodCostPrice').value)||0,
+            minStock: parseInt(document.getElementById('prodMinStock').value)||5,
+        };
+
+        if (id) {
+            const idx = products.findIndex(p=>p.id===id);
+            if(idx!==-1) { products[idx] = {...products[idx],...data, closingStock: data.openingStock+data.addedStock-products[idx].totalSold }; }
+        } else {
+            data.id = genId();
+            data.closingStock = data.openingStock + data.addedStock;
+            data.totalSold = 0;
+            data.createdAt = new Date().toISOString();
+            products.push(data);
+        }
+        setProducts(products);
+        closeModal('productModal');
+        refreshAll();
+        showToast('Product saved','success');
+    }
+
+    function deleteProduct(id) {
+        if(!confirm('Delete this product?'))return;
+        setProducts(getProducts().filter(p=>p.id!==id));
+        refreshAll();
+        showToast('Product deleted','success');
+    }
+
+    // ====== SALES / RESTOCK ======
+    function openSaleModal(id) {
+        const p = getProducts().find(x=>x.id===id);
+        if(!p)return;
+        document.getElementById('saleProductId').value=p.id;
+        document.getElementById('saleProductName').value=p.name;
+        document.getElementById('saleAvailable').value=p.closingStock;
+        document.getElementById('salePriceDisplay').value=fmt(p.sellPrice);
+        document.getElementById('saleQty').value='';
+        document.getElementById('saleQty').max=p.closingStock;
+        document.getElementById('saleNotes').value='';
+        openModal('saleModal');
+    }
+
+    function recordSale(e) {
+        e.preventDefault();
+        const products = getProducts();
+        const id = document.getElementById('saleProductId').value;
+        const qty = parseInt(document.getElementById('saleQty').value);
+        const notes = document.getElementById('saleNotes').value;
+        const idx = products.findIndex(p=>p.id===id);
+        if(idx===-1)return;
+        if(qty > products[idx].closingStock){showToast('Not enough stock!','error');return;}
+
+        products[idx].closingStock -= qty;
+        products[idx].totalSold += qty;
+        setProducts(products);
+
+        const txs = getTransactions();
+        txs.unshift({ id:genId(), productId:id, productName:products[idx].name, type:'sale', qty, unitPrice:products[idx].sellPrice, total:qty*products[idx].sellPrice, by:currentUser().username, notes, date:new Date().toISOString() });
+        setTransactions(txs);
+
+        closeModal('saleModal');
+        refreshAll();
+        showToast(`Sale recorded: ${qty}x ${products[idx].name}`,'success');
+    }
+
+    function openRestockModal(id) {
+        const p = getProducts().find(x=>x.id===id);
+        if(!p)return;
+        document.getElementById('restockProductId').value=p.id;
+        document.getElementById('restockProductName').value=p.name;
+        document.getElementById('restockCurrent').value=p.closingStock;
+        document.getElementById('restockQty').value='';
+        document.getElementById('restockNotes').value='';
+        openModal('restockModal');
+    }
+
+    function recordRestock(e) {
+        e.preventDefault();
+        const products = getProducts();
+        const id = document.getElementById('restockProductId').value;
+        const qty = parseInt(document.getElementById('restockQty').value);
+        const notes = document.getElementById('restockNotes').value;
+        const idx = products.findIndex(p=>p.id===id);
+        if(idx===-1)return;
+
+        products[idx].closingStock += qty;
+        products[idx].addedStock += qty;
+        setProducts(products);
+
+        const txs = getTransactions();
+        txs.unshift({ id:genId(), productId:id, productName:products[idx].name, type:'restock', qty, unitPrice:products[idx].costPrice, total:qty*products[idx].costPrice, by:currentUser().username, notes, date:new Date().toISOString() });
+        setTransactions(txs);
+
+        closeModal('restockModal');
+        refreshAll();
+        showToast(`Restocked: ${qty}x ${products[idx].name}`,'success');
+    }
+
+    // ====== EXPORT ======
+    function exportData() {
+        const products = getProducts();
+        const headers = ['Barcode','Item','Category','Opening','Added','Total','Closing','Sold','Sell Price(KES)','Cost Price(KES)','Stock Value(KES)'];
+        let csv = headers.join(',')+'\n';
+        products.forEach(p=>{
+            csv += [p.barcode,`"${p.name}"`,p.category,p.openingStock,p.addedStock,p.openingStock+p.addedStock,p.closingStock,p.totalSold,p.sellPrice,p.costPrice,p.closingStock*p.sellPrice].join(',')+'\n';
+        });
+        const blob = new Blob([csv],{type:'text/csv'});
+        const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='club_legacy_stock.csv'; a.click();
+        showToast('Exported successfully','success');
+    }
+
+    // ====== UTILS ======
+    function openModal(id) { document.getElementById(id).classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+    function showToast(msg,type='') { const c=document.getElementById('toastContainer'); const t=document.createElement('div'); t.className='toast '+type; t.textContent=msg; c.appendChild(t); setTimeout(()=>t.remove(),3000); }
+
+    function refreshAll() {
+        renderDashboard();
+        renderInventory();
+        renderSales();
+        renderTransactions();
+        renderVelocity();
+        renderValuation();
+        renderAlerts();
+        if (currentUser()?.permissions?.admin) renderUsers();
+    }
+
+    // Close modals on overlay click
+    document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('active');}));
+    document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-overlay.active').forEach(m=>m.classList.remove('active'));});
+
+    // ====== INIT ======
+    initDefaultUsers();
+    seedProducts();
+    showApp();
+    </script>
+</body>
+</html>
